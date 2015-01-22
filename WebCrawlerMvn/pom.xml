@@ -51,7 +51,7 @@
 					<archive>
 						<manifest>
 							<addClasspath>true</addClasspath>
-							<mainClass>com.pramati.training.webcrawler.MyWebCrawlerUtil</mainClass>
+							<mainClass>com.pramati.training.webcrawler.impl.WebCrawlerImpl</mainClass>
 							<classpathPrefix>dependency-jars/</classpathPrefix>
 						</manifest>
 					</archive>
