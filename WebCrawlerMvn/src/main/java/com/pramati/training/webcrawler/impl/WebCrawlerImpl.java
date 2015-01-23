@@ -3,8 +3,9 @@ package com.pramati.training.webcrawler.impl;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashSet;
-import java.util.Scanner;
+import java.util.Properties;
 import java.util.regex.Matcher;
 
 import org.apache.logging.log4j.LogManager;
@@ -56,19 +57,20 @@ public final class WebCrawlerImpl implements ICrawler {
 	 * 
 	 * @param args
 	 * @author Divakar Viswanathan
+	 * @throws IOException 
 	 * @since 1.0
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		LOG.info("Entering WebCrawlerImpl...");
-		Scanner in = null;
+		InputStream fileInput = null;
 		try {
-			in = new Scanner(System.in);
 			ICrawler webCrawlerImpl = WebCrawlerImpl.getInstance();
-			String baseURL;
-			String criteria;
-			String crawlRepoLocation;
-			System.out.println("Enter the url to be crawled:");
-			baseURL = in.nextLine();
+			fileInput = WebCrawlerImpl.class.getClassLoader().getResourceAsStream(WebCrawlerConstants.CRAWL_PROPS_FILE_LOC);
+			Properties crawlerProperties = new Properties();
+			crawlerProperties.load(fileInput);
+			String baseURL = crawlerProperties.getProperty(WebCrawlerConstants.CRAWL_URL);
+			String criteria = crawlerProperties.getProperty(WebCrawlerConstants.CRAWL_CRITERIA);
+			String crawlRepoLocation = crawlerProperties.getProperty(WebCrawlerConstants.CRAWL_REPO_LOCATION);
 			if (baseURL == null || baseURL.trim().equals("")) {
 				throw new InvalidURLException("Empty URL");
 			} else {
@@ -77,14 +79,10 @@ public final class WebCrawlerImpl implements ICrawler {
 					throw new InvalidURLException("Invalid URL Pattern");
 				}
 			}
-			System.out.println("Enter the repo location for crawled content (Sample: crawl/root/):");
-			crawlRepoLocation = in.nextLine();
 			if (crawlRepoLocation == null || crawlRepoLocation.trim().equals("")) {
 				LOG.info("Crawl Location is empty. Setting it to default location crawl/root/");
 				crawlRepoLocation = WebCrawlerConstants.DEF_CRAWL_REPO_LOC;
 			}
-			System.out.println("Enter the year for crawling (Sample: 2014) : ");
-			criteria = in.nextLine();
 			File dir = new File(crawlRepoLocation);
 			dir.mkdirs();
 			CrawlConfigTO crawlConfig = new CrawlConfigTO();
@@ -92,14 +90,15 @@ public final class WebCrawlerImpl implements ICrawler {
 			crawlConfig.setBaseCrawlLocation(baseURL);
 			crawlConfig.setCrawledLocations(new HashSet<String>());
 			crawlConfig.setCrawlCriteria(criteria);
+			System.out.println("Crawling has begun..");
 			webCrawlerImpl.crawlData(baseURL, crawlConfig);
-			System.out.println("Crawling has been done successfully..");
+			System.out.println("Crawling has completed successfully..");
 		} catch (IOException e) {
 			LOG.error("Error occurred", e);
 		} catch (InvalidURLException e) {
 			LOG.error("Error occurred due to Invalid URL", e);
 		} finally {
-			in.close();
+			fileInput.close();
 		}
 	}
 
