@@ -5,9 +5,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Scanner;
+import java.util.regex.Matcher;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -19,7 +21,7 @@ import com.pramati.training.webcrawler.common.exception.InvalidURLException;
 import com.pramati.training.webcrawler.to.CrawlConfigTO;
 
 /**
- *
+ * 
  * @author Divakar Viswanathan
  * @since 1.0
  */
@@ -51,6 +53,7 @@ public final class WebCrawlerImpl implements ICrawler {
 
 	/**
 	 * Entry point for the program
+	 * 
 	 * @param args
 	 * @author Divakar Viswanathan
 	 * @since 1.0
@@ -66,12 +69,17 @@ public final class WebCrawlerImpl implements ICrawler {
 			String crawlRepoLocation;
 			System.out.println("Enter the url to be crawled:");
 			baseURL = in.nextLine();
-			if(baseURL == null || baseURL.trim().equals("")) {
+			if (baseURL == null || baseURL.trim().equals("")) {
 				throw new InvalidURLException("Empty URL");
+			} else {
+				Matcher urlMatcher = WebCrawlerConstants.URL_REGEX.matcher(baseURL);
+				if (!urlMatcher.matches()) {
+					throw new InvalidURLException("Invalid URL Pattern");
+				}
 			}
 			System.out.println("Enter the repo location for crawled content (Sample: crawl/root/):");
 			crawlRepoLocation = in.nextLine();
-			if(crawlRepoLocation == null || crawlRepoLocation.trim().equals("")) {
+			if (crawlRepoLocation == null || crawlRepoLocation.trim().equals("")) {
 				LOG.info("Crawl Location is empty. Setting it to default location crawl/root/");
 				crawlRepoLocation = WebCrawlerConstants.DEF_CRAWL_REPO_LOC;
 			}
@@ -79,7 +87,6 @@ public final class WebCrawlerImpl implements ICrawler {
 			criteria = in.nextLine();
 			File dir = new File(crawlRepoLocation);
 			dir.mkdirs();
-			// Validate URL, if invalid throw an invalid url exception
 			CrawlConfigTO crawlConfig = new CrawlConfigTO();
 			crawlConfig.setCrawlRepoLocation(crawlRepoLocation);
 			crawlConfig.setBaseCrawlLocation(baseURL);
@@ -102,7 +109,7 @@ public final class WebCrawlerImpl implements ICrawler {
 		if (crawlLocation.equals(crawlConfig.getBaseCrawlLocation())) {
 			canCrawl = crawlConfig.getCrawledLocations().add(crawlLocation);
 		} else if (crawlConfig.getCrawlCriteria() != null && !crawlConfig.getCrawlCriteria().equals("")) {
-			if(crawlLocation.contains(crawlConfig.getCrawlCriteria())) {
+			if (crawlLocation.contains(crawlConfig.getCrawlCriteria())) {
 				canCrawl = crawlConfig.getCrawledLocations().add(crawlLocation);
 			} else {
 				return;
@@ -115,10 +122,14 @@ public final class WebCrawlerImpl implements ICrawler {
 		if (canCrawl) {
 			Document doc = null;
 			try {
-				doc = Jsoup.connect(crawlLocation).get();
-				archieveContent(doc.text(), crawlLocation.replaceAll(WebCrawlerConstants.ALL_SPL_CHARS, ""), crawlConfig);
+				doc = Jsoup.connect(crawlLocation).ignoreContentType(true).get();
+				archieveContent(doc.text(), crawlLocation.replaceAll(WebCrawlerConstants.ALL_SPL_CHARS, ""),
+						crawlConfig);
+			} catch (HttpStatusException hste) {
+				LOG.debug("Error connecting to the URL " + crawlLocation + "skipping it..", hste);
+				return;
 			} catch (IOException e1) {
-				LOG.debug("Error occurred while processing page", e1);
+				LOG.error("Error occurred while processing page", e1);
 				throw e1;
 			}
 			Elements links = doc.select(WebCrawlerConstants.ANCHOR_TABS);
@@ -130,7 +141,20 @@ public final class WebCrawlerImpl implements ICrawler {
 
 	@Override
 	public void archieveContent(String textContent, String fileName, CrawlConfigTO crawlConfig) throws IOException {
-		File file = new File(crawlConfig.getCrawlRepoLocation(), fileName.concat(WebCrawlerConstants.TEXT_FILE_EXTN));
+		int indexOfSearchCriteria = fileName.indexOf(crawlConfig.getCrawlCriteria());
+		StringBuffer crawlRepoLocation = new StringBuffer(crawlConfig.getCrawlRepoLocation());
+		if (indexOfSearchCriteria != -1) {
+			int ind = indexOfSearchCriteria + crawlConfig.getCrawlCriteria().length();
+			String monthID = fileName.substring(ind, ind + WebCrawlerConstants.MONTH_ID_LENGTH);
+			Matcher monMatcher = WebCrawlerConstants.MONTH_ID.matcher(monthID);
+			if (monMatcher.matches()) {
+				crawlRepoLocation.append(File.separator).append(crawlConfig.getCrawlCriteria()).append(File.separator)
+						.append(monthID);
+				File dir = new File(crawlRepoLocation.toString());
+				dir.mkdirs();
+			}
+		}
+		File file = new File(crawlRepoLocation.toString(), fileName.concat(WebCrawlerConstants.TEXT_FILE_EXTN));
 		FileWriter fileWriter = null;
 		try {
 			fileWriter = new FileWriter(file);

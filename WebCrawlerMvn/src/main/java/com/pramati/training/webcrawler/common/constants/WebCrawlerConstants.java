@@ -3,6 +3,8 @@
  */
 package com.pramati.training.webcrawler.common.constants;
 
+import java.util.regex.Pattern;
+
 
 /**
  *
@@ -21,6 +23,10 @@ public class WebCrawlerConstants {
 	
 	public final static String DEF_CRAWL_REPO_LOC = "crawl/root/";
 	
-	//To do regex for valid url
-	//public final static Pattern p = Pattern.compile("(http://)?[a-zA-Z_0-9\\-]+(\\.\\w[a-zA-Z_0-9\\-]+)+(/[#&\\n\\-=?\\+\\%/\\.\\w]+)?");  
+	public final static Pattern URL_REGEX = Pattern.compile("(http(s)?://)?[a-zA-Z_0-9\\-]+(\\.\\w[a-zA-Z_0-9\\-]+)+(/[#&\\n\\-=?\\+\\%/\\.\\w]+)?");
+	
+	public final static Pattern MONTH_ID = Pattern.compile("^([0][1-9]|[1][012])$");
+	
+	public final static int MONTH_ID_LENGTH = 2;
+			
 }
